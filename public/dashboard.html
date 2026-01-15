@@ -1,0 +1,474 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Car App</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">Car App</a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3" id="userInfo">Loading...</span>
+                <button class="btn btn-outline-light btn-sm" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5>Welcome, <span id="usernameDisplay"></span></h5>
+                <p class="mb-0">User ID: <span id="userIdDisplay"></span></p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Add New Car</h5>
+            </div>
+            <div class="card-body">
+                <form id="addCarForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Brand" id="brand" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" placeholder="Model" id="model" required>
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" class="form-control" placeholder="Year" id="year" required min="1900">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" class="form-control" placeholder="Price" id="price" required min="10000">
+                        </div>
+                        <div class="col-md-4">
+                            <input type="number" class="form-control" placeholder="Mileage" id="mileage" required min="0">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-success">Add Car</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Update Car Price</h5>
+            </div>
+            <div class="card-body">
+                <form id="updateCarForm">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <input type="number" class="form-control" placeholder="Car ID" id="updateCarId" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="number" class="form-control" placeholder="New Price" id="updatePrice" required min="10000">
+                        </div>
+                        <div class="col-12">
+                            <button type="submit" class="btn btn-warning">Update Price</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5>Delete Car</h5>
+            </div>
+            <div class="card-body">
+                <form id="deleteCarForm">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <input type="number" class="form-control" placeholder="Car ID to delete" id="deleteCarId" required>
+                        </div>
+                        <div class="col-md-4">
+                            <button type="submit" class="btn btn-danger w-100">Delete Car</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>My Cars</h5>
+                <button class="btn btn-primary btn-sm" onclick="loadMyCars()">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div id="myCarsList"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5>All Cars</h5>
+                <button class="btn btn-primary btn-sm" onclick="loadAllCars()">Refresh</button>
+            </div>
+            <div class="card-body">
+                <div id="allCarsList"></div>
+            </div>
+        </div>
+
+        <div class="card mb-4" id="adminPanel" style="display: none;">
+            <div class="card-header bg-danger text-white">
+                <h5>Admin Panel</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <button class="btn btn-warning me-2" onclick="loadAllUsers()">View All Users</button>
+                    <button class="btn btn-info" onclick="showMakeAdminForm()">Make User Admin</button>
+                    <button class="btn btn-danger" onclick="showDeleteUserForm()">Delete User</button>
+                </div>
+                <div id="adminContent"></div>
+            </div>
+        </div>
+
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        let currentUser = null;
+
+        function getToken() {
+            return localStorage.getItem('token');
+        }
+
+        function showMessage(text, type = 'success') {
+            const message = document.getElementById('message');
+            message.innerHTML = `<div class="alert alert-${type}">${text}</div>`;
+            setTimeout(() => message.innerHTML = '', 3000);
+        }
+
+        function makeAuthRequest(url, options = {}) {
+            const token = getToken();
+            options.headers = {
+                ...options.headers,
+                'Authorization': `Bearer ${token}`
+            };
+            return fetch(url, options);
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/auth/me`);
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('usernameDisplay').textContent = currentUser.username;
+                    document.getElementById('userIdDisplay').textContent = currentUser.id;
+                    document.getElementById('userInfo').textContent = `${currentUser.username} (${currentUser.role})`;
+                    if (currentUser.role === 'admin') {
+                        document.getElementById('adminPanel').style.display = 'block';
+                    }
+                    loadMyCars();
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        async function loadAllUsers() {
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/admin/users`);
+                const users = await response.json();
+                
+                let html = '<h6>All Users</h6>';
+                html += '<div class="table-responsive"><table class="table table-sm"><thead><tr>';
+                html += '<th>ID</th><th>Username</th><th>Role</th><th>Actions</th>';
+                html += '</tr></thead><tbody>';
+                
+                users.forEach(user => {
+                    html += `<tr>
+                        <td>${user.id}</td>
+                        <td>${user.username}</td>
+                        <td><span class="badge ${user.role === 'admin' ? 'bg-danger' : 'bg-secondary'}">${user.role}</span></td>
+                        <td>`;
+                    
+                    if (user.role !== 'admin' && user.id !== currentUser.id) {
+                        html += `<button class="btn btn-sm btn-warning" onclick="makeAdmin(${user.id})">Make Admin</button>`;
+                    }
+                    
+                    html += `</td></tr>`;
+                });
+                
+                html += '</tbody></table></div>';
+                document.getElementById('adminContent').innerHTML = html;
+            } catch (error) {
+                document.getElementById('adminContent').innerHTML = '<p class="text-danger">Error loading users</p>';
+            }
+        }
+
+        async function makeAdmin(userId) {
+            if (!confirm('Are you sure you want to make this user an admin?')) {
+                return;
+            }
+
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/admin/users/${userId}/make-admin`, {
+                    method: 'PATCH'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User promoted to admin successfully!');
+                    loadAllUsers();
+                } else {
+                    showMessage('Error: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('Network error', 'danger');
+            }
+        }
+
+        async function deleteUser(userId = null) {
+            let targetUserId = userId;
+            if (!targetUserId) {
+                showDeleteUserForm();
+                return;
+            }
+
+            if (targetUserId === currentUser.id) {
+                showMessage('You cannot delete your own account!', 'danger');
+                return;
+            }
+            if (!confirm('Are you sure you want to delete this user?')) {
+                return;
+            }
+
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/admin/users/${targetUserId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User deleted successfully!');
+                    loadAllUsers();
+                } else {
+                    showMessage('Error: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('Network error', 'danger');
+            }
+        }
+
+        function showMakeAdminForm() {
+            const html = `
+                <div class="mt-3">
+                    <h6>Make User Admin</h6>
+                    <div class="input-group">
+                        <input type="number" class="form-control" placeholder="User ID" id="makeAdminUserId">
+                        <button class="btn btn-warning" onclick="makeAdminById()">Make Admin</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById('adminContent').innerHTML = html;
+        }
+
+        function showDeleteUserForm() {
+            const html = `
+                <div class="mt-3">
+                    <h6>Delete User</h6>
+                    <div class="alert alert-warning">
+                        <strong>Warning:</strong> This action cannot be undone. All cars belonging to this user will also be deleted.
+                    </div>
+                    <div class="input-group mb-3">
+                        <input type="number" class="form-control" placeholder="User ID to delete" id="deleteUserId">
+                        <button class="btn btn-danger" onclick="deleteUserById()">Delete User</button>
+                    </div>
+                    <p class="text-muted small">Note: You cannot delete your own account.</p>
+                </div>
+            `;
+            document.getElementById('adminContent').innerHTML = html;
+        }
+
+        function makeAdminById() {
+            const userId = document.getElementById('makeAdminUserId').value;
+            if (userId) {
+                makeAdmin(userId);
+            }
+        }
+
+        function deleteUserById() {
+            const userId = document.getElementById('deleteUserId').value;
+            if (userId) {
+                deleteUser(parseInt(userId));
+            }
+        }
+
+        async function loadMyCars() {
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/auth/me`);
+                if (response.ok) {
+                    const user = await response.json();
+                    const carsResponse = await makeAuthRequest(`${API_BASE}/cars/${user.id}`);
+                    const cars = await carsResponse.json();
+                    displayCars(cars, 'myCarsList', 'My Cars');
+                }
+            } catch (error) {
+                document.getElementById('myCarsList').innerHTML = '<p class="text-muted">No cars yet</p>';
+            }
+        }
+
+        async function loadAllCars() {
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/cars/list`);
+                const cars = await response.json();
+                displayCars(cars, 'allCarsList', 'All Cars');
+            } catch (error) {
+                document.getElementById('allCarsList').innerHTML = '<p class="text-danger">Error loading cars</p>';
+            }
+        }
+
+        function displayCars(cars, containerId, title) {
+            const container = document.getElementById(containerId);
+            
+            if (!cars || cars.length === 0) {
+                container.innerHTML = `<p class="text-muted">No cars found</p>`;
+                return;
+            }
+
+            let html = `<h6>${title} (${cars.length})</h6>`;
+            html += `<div class="table-responsive"><table class="table table-sm"><thead><tr>
+                <th>ID</th><th>Brand</th><th>Model</th><th>Year</th><th>Price</th><th>Mileage</th>
+            </tr></thead><tbody>`;
+            
+            cars.forEach(car => {
+                html += `<tr>
+                    <td>${car.id}</td>
+                    <td>${car.brand}</td>
+                    <td>${car.model}</td>
+                    <td>${car.year}</td>
+                    <td>${car.price}</td>
+                    <td>${car.mileage}</td>
+                </tr>`;
+            });
+            
+            html += `</tbody></table></div>`;
+            container.innerHTML = html;
+        }
+
+        document.getElementById('addCarForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const carData = {
+                brand: document.getElementById('brand').value,
+                model: document.getElementById('model').value,
+                year: parseInt(document.getElementById('year').value),
+                price: parseInt(document.getElementById('price').value),
+                mileage: parseInt(document.getElementById('mileage').value)
+            };
+
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/cars`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(carData)
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Car added successfully!');
+                    document.getElementById('addCarForm').reset();
+                    loadMyCars();
+                    loadAllCars();
+                } else {
+                    showMessage('Error: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('Network error', 'danger');
+            }
+        });
+
+        document.getElementById('updateCarForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const carId = document.getElementById('updateCarId').value;
+            const newPrice = parseInt(document.getElementById('updatePrice').value);
+
+            if (!carId || !newPrice) {
+                showMessage('Please fill all fields', 'danger');
+                return;
+            }
+
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/cars/${carId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ price: newPrice })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Car price updated successfully!');
+                    document.getElementById('updateCarForm').reset();
+                    loadMyCars();
+                    loadAllCars();
+                } else {
+                    showMessage('Error: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('Network error', 'danger');
+            }
+        });
+
+        document.getElementById('deleteCarForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const carId = document.getElementById('deleteCarId').value;
+
+            if (!carId) {
+                showMessage('Please enter car ID', 'danger');
+                return;
+            }
+
+            if (!confirm('Are you sure you want to delete this car?')) {
+                return;
+            }
+
+            try {
+                const response = await makeAuthRequest(`${API_BASE}/cars/${carId}`, {
+                    method: 'DELETE'
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Car deleted successfully!');
+                    document.getElementById('deleteCarForm').reset();
+                    loadMyCars();
+                    loadAllCars();
+                } else {
+                    showMessage('Error: ' + data.error, 'danger');
+                }
+            } catch (error) {
+                showMessage('Network error', 'danger');
+            }
+        });
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login';
+                return;
+            }
+            loadUserInfo();
+            loadAllCars();
+        });
+    </script>
+</body>
+</html>
