@@ -1,13 +1,13 @@
 Car App - Веб-приложение для управления автомобилями
 
-Цели и задачи:
+**Цели и задачи**:
 
 Создать систему управления автомобилями с пользовательской аутентификацией
 Реализовать CRUD операции для автомобилей
 Добавить административные функции для управления пользователями
 Обеспечить безопасность данных с использованием JWT токенов
 
-Основные функции:
+**Основные функции**:
 
 Регистрация и аутентификация пользователей
 Добавление, просмотр, обновление и удаление автомобилей
@@ -16,7 +16,7 @@ Car App - Веб-приложение для управления автомоб
 Обновление цен на автомобили
 Ролевая система (user/admin)
 
-Используемые инструменты и технологии:
+**Используемые инструменты и технологии**:
 
 Backend:
 Node.js - серверная платформа
@@ -35,9 +35,10 @@ Supertest - тестирование HTTP запросов
 Swagger - API документация
 dotenv - управление переменными окружения
 
-Описание базы данных
+**Описание базы данных**
 
 Таблица users:
+```sql
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
     username VARCHAR(50) UNIQUE NOT NULL,
@@ -45,7 +46,9 @@ CREATE TABLE users (
     role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+```
 Таблица cars:
+```sql
 CREATE TABLE cars (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -56,11 +59,12 @@ CREATE TABLE cars (
     mileage INTEGER NOT NULL CHECK (mileage >= 0),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+```
 Связи:
 Один пользователь (users) может иметь много автомобилей (cars)
 При удалении пользователя удаляются все его автомобили (CASCADE)
 
-Установка и запуск приложения
+**Установка и запуск приложения**
 
 1. Клонирование репозитория: git clone https://github.com/isaeva20/car_app.git; cd car_app
 2. Установка зависимостей: npm install
@@ -71,6 +75,6 @@ CREATE TABLE cars (
 Запуск тестов
 npm test
 
-API Документация
+**API Документация**
 
 http://localhost:3000/api_docs
